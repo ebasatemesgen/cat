@@ -220,6 +220,15 @@ def min_base_height(
     return limit - robot.data.root_pos_w[:, 2]
 
 
+def max_base_height(
+    env: ManagerBasedRLEnv,
+    limit: float,
+    asset_cfg: SceneEntityCfg,
+) -> torch.Tensor:
+    robot = env.scene[asset_cfg.name]
+    return robot.data.root_pos_w[:, 2] - limit
+
+
 def no_move(
     env: ManagerBasedRLEnv,
     velocity_deadzone: float,

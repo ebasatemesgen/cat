@@ -73,7 +73,26 @@ from isaaclab.envs import (
     ManagerBasedRLEnvCfg,
 )
 from isaaclab.utils.dict import print_dict
-from isaaclab.utils.io import dump_pickle, dump_yaml
+try:
+    from isaaclab.utils.io import dump_pickle, dump_yaml
+except ImportError:
+    # IsaacLab removed dump_pickle in newer versions; keep local fallback.
+    from isaaclab.utils.io import dump_yaml
+    import os
+    import pickle
+
+    def dump_pickle(filename: str, data):
+        """Saves data into a pickle file safely.
+
+        Note:
+            The function creates any missing directory along the file's path.
+        """
+        if not filename.endswith("pkl"):
+            filename += ".pkl"
+        if not os.path.exists(os.path.dirname(filename)):
+            os.makedirs(os.path.dirname(filename), exist_ok=True)
+        with open(filename, "wb") as f:
+            pickle.dump(data, f, protocol=pickle.HIGHEST_PROTOCOL)
 from isaaclab_tasks.utils import get_checkpoint_path
 from isaaclab_tasks.utils.hydra import hydra_task_config
 

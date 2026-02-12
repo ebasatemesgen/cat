@@ -8,6 +8,9 @@
 """Launch Isaac Sim Simulator first."""
 
 import argparse
+import importlib.util
+import sys
+from pathlib import Path
 
 from isaaclab.app import AppLauncher
 
@@ -40,6 +43,31 @@ args_cli = parser.parse_args()
 if args_cli.video:
     args_cli.enable_cameras = True
 
+# fail fast if rl_games is missing to avoid launching Isaac Sim
+if importlib.util.find_spec("rl_games") is None:
+    print(
+        "[ERROR] Missing Python package `rl_games`.\n"
+        "Install it in the same Python environment as Isaac Lab, e.g.:\n"
+        "  pip install rl-games\n"
+        "or:\n"
+        "  pip install git+https://github.com/Denys88/rl_games"
+    )
+    raise SystemExit(1)
+
+if importlib.util.find_spec("cat_envs") is None:
+    repo_root = Path(__file__).resolve().parents[2]
+    local_ext = repo_root / "exts" / "cat_envs"
+    if local_ext.exists():
+        sys.path.insert(0, str(local_ext))
+
+if importlib.util.find_spec("cat_envs") is None:
+    print(
+        "[ERROR] Missing local package `cat_envs`.\n"
+        "Either install it or run from the repo with the local path available.\n"
+        "Tried adding: exts/cat_envs"
+    )
+    raise SystemExit(1)
+
 # launch omniverse app
 app_launcher = AppLauncher(args_cli)
 simulation_app = app_launcher.app
@@ -52,6 +80,7 @@ import math
 import os
 import time
 import torch
+from torch import serialization as torch_serialization
 
 from rl_games.common import env_configurations, vecenv
 from rl_games.common.player import BasePlayer
@@ -72,9 +101,36 @@ from isaaclab_tasks.utils import get_checkpoint_path, load_cfg_from_registry, pa
 
 # PLACEHOLDER: Extension template (do not remove this comment)
 
+def _patch_rl_games_checkpoint_loading():
+    """Patch rl_games checkpoint loading for PyTorch>=2.6 weights_only default."""
+    try:
+        import numpy as np
+        # Allowlist common numpy globals used in older checkpoints.
+        if hasattr(torch_serialization, "add_safe_globals"):
+            torch_serialization.add_safe_globals([np.core.multiarray.scalar, np.dtype])
+    except Exception:
+        pass
+
+    try:
+        from rl_games.algos_torch import torch_ext
+
+        def _safe_load(filename):
+            def _load(path):
+                try:
+                    return torch.load(path, weights_only=False)
+                except TypeError:
+                    return torch.load(path)
+
+            return torch_ext.safe_filesystem_op(_load, filename)
+
+        torch_ext.safe_load = _safe_load
+    except Exception:
+        pass
+
 
 def main():
     """Play with RL-Games agent."""
+    _patch_rl_games_checkpoint_loading()
     # parse env configuration
     env_cfg = parse_env_cfg(
         args_cli.task, device=args_cli.device, num_envs=args_cli.num_envs, use_fabric=not args_cli.disable_fabric
@@ -183,7 +239,15 @@ def main():
             # convert obs to agent format
             obs = agent.obs_to_torch(obs)
             # agent stepping
-            actions = agent.get_action(obs, is_deterministic=agent.is_deterministic)
+            is_det = getattr(agent, "is_deterministic", getattr(agent, "is_determenistic", False))
+            try:
+                actions = agent.get_action(obs, is_deterministic=is_det)
+            except TypeError:
+                # Older rl_games player signature doesn't accept is_deterministic
+                try:
+                    actions = agent.get_action(obs, is_det)
+                except TypeError:
+                    actions = agent.get_action(obs)
             # env stepping
             obs, _, dones, _ = env.step(actions)
 

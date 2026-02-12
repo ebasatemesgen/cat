@@ -20,6 +20,7 @@ gym.register(
     kwargs={
         "env_cfg_entry_point": f"{__name__}.cat_flat_env_cfg:Solo12FlatEnvCfg",
         "clean_rl_cfg_entry_point": f"{agents.__name__}.clean_rl_ppo_cfg:Solo12FlatPPORunnerCfg",
+        "rsl_rl_cfg_entry_point": f"{agents.__name__}.rsl_rl_ppo_cfg:Solo12FlatRslRlPPORunnerCfg",
         "rl_games_cfg_entry_point": f"{agents.__name__}:rl_games_cat_solo.yaml",
         "skrl_cfg_entry_point": f"{agents.__name__}:skrl_ppo_cfg.yaml",
     },
@@ -33,6 +34,63 @@ gym.register(
     kwargs={
         "env_cfg_entry_point": f"{__name__}.cat_flat_env_cfg:Solo12FlatEnvCfg_PLAY",
         "clean_rl_cfg_entry_point": f"{agents.__name__}.clean_rl_ppo_cfg:Solo12FlatPPORunnerCfg",
+        "rsl_rl_cfg_entry_point": f"{agents.__name__}.rsl_rl_ppo_cfg:Solo12FlatRslRlPPORunnerCfg",
+        "rl_games_cfg_entry_point": f"{agents.__name__}:rl_games_cat_solo.yaml",
+        "skrl_cfg_entry_point": f"{agents.__name__}:skrl_ppo_cfg.yaml",
+    },
+)
+
+
+gym.register(
+    id="Isaac-Velocity-CaT-Platform-Solo12-v0",
+    entry_point=CaTEnv,
+    disable_env_checker=True,
+    kwargs={
+        "env_cfg_entry_point": f"{__name__}.cat_platform_env_cfg:Solo12PlatformEnvCfg",
+        "clean_rl_cfg_entry_point": f"{agents.__name__}.clean_rl_ppo_cfg:Solo12FlatPPORunnerCfg",
+        "rsl_rl_cfg_entry_point": f"{agents.__name__}.rsl_rl_ppo_cfg:Solo12FlatRslRlPPORunnerCfg",
+        "rl_games_cfg_entry_point": f"{agents.__name__}:rl_games_cat_solo.yaml",
+        "skrl_cfg_entry_point": f"{agents.__name__}:skrl_ppo_cfg.yaml",
+    },
+)
+
+
+gym.register(
+    id="Isaac-Velocity-CaT-Platform-Solo12-Play-v0",
+    entry_point=CaTEnv,
+    disable_env_checker=True,
+    kwargs={
+        "env_cfg_entry_point": f"{__name__}.cat_platform_env_cfg:Solo12PlatformEnvCfg_PLAY",
+        "clean_rl_cfg_entry_point": f"{agents.__name__}.clean_rl_ppo_cfg:Solo12FlatPPORunnerCfg",
+        "rsl_rl_cfg_entry_point": f"{agents.__name__}.rsl_rl_ppo_cfg:Solo12FlatRslRlPPORunnerCfg",
+        "rl_games_cfg_entry_point": f"{agents.__name__}:rl_games_cat_solo.yaml",
+        "skrl_cfg_entry_point": f"{agents.__name__}:skrl_ppo_cfg.yaml",
+    },
+)
+
+
+gym.register(
+    id="Isaac-Velocity-CaT-Limbo-Solo12-v0",
+    entry_point=CaTEnv,
+    disable_env_checker=True,
+    kwargs={
+        "env_cfg_entry_point": f"{__name__}.cat_limbo_env_cfg:Solo12LimboEnvCfg",
+        "clean_rl_cfg_entry_point": f"{agents.__name__}.clean_rl_ppo_cfg:Solo12FlatPPORunnerCfg",
+        "rsl_rl_cfg_entry_point": f"{agents.__name__}.rsl_rl_ppo_cfg:Solo12FlatRslRlPPORunnerCfg",
+        "rl_games_cfg_entry_point": f"{agents.__name__}:rl_games_cat_solo.yaml",
+        "skrl_cfg_entry_point": f"{agents.__name__}:skrl_ppo_cfg.yaml",
+    },
+)
+
+
+gym.register(
+    id="Isaac-Velocity-CaT-Limbo-Solo12-Play-v0",
+    entry_point=CaTEnv,
+    disable_env_checker=True,
+    kwargs={
+        "env_cfg_entry_point": f"{__name__}.cat_limbo_env_cfg:Solo12LimboEnvCfg_PLAY",
+        "clean_rl_cfg_entry_point": f"{agents.__name__}.clean_rl_ppo_cfg:Solo12FlatPPORunnerCfg",
+        "rsl_rl_cfg_entry_point": f"{agents.__name__}.rsl_rl_ppo_cfg:Solo12FlatRslRlPPORunnerCfg",
         "rl_games_cfg_entry_point": f"{agents.__name__}:rl_games_cat_solo.yaml",
         "skrl_cfg_entry_point": f"{agents.__name__}:skrl_ppo_cfg.yaml",
     },

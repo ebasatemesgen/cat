@@ -1,4 +1,4 @@
-from rl_games.algos_torch import a2c_continuous
+from rl_games.algos_torch import a2c_continuous, torch_ext
 from rl_games.common.a2c_common import swap_and_flatten01
 import torch
 import time
@@ -31,6 +31,17 @@ class CaTA2CAgent(a2c_continuous.A2CAgent):
         self.dones = torch.ones(
             (batch_size,), dtype=torch.float32, device=self.ppo_device
         )
+
+        # Backward/forward compatibility with rl_games versions that don't track shaped rewards
+        if not hasattr(self, "current_shaped_rewards"):
+            self.current_shaped_rewards = torch.zeros_like(self.current_rewards)
+        if not hasattr(self, "game_shaped_rewards"):
+            try:
+                self.game_shaped_rewards = torch_ext.AverageMeter(
+                    self.value_size, self.games_to_track
+                ).to(self.ppo_device)
+            except Exception:
+                self.game_shaped_rewards = None
 
     def play_steps(self):
         update_list = self.update_list
@@ -78,9 +89,10 @@ class CaTA2CAgent(a2c_continuous.A2CAgent):
             env_done_indices = all_done_indices[:: self.num_agents]
 
             self.game_rewards.update(self.current_rewards[env_done_indices])
-            self.game_shaped_rewards.update(
-                self.current_shaped_rewards[env_done_indices]
-            )
+            if self.game_shaped_rewards is not None:
+                self.game_shaped_rewards.update(
+                    self.current_shaped_rewards[env_done_indices]
+                )
             self.game_lengths.update(self.current_lengths[env_done_indices])
             self.algo_observer.process_infos(infos, env_done_indices)
 

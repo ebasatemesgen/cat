@@ -8,7 +8,9 @@
 """Launch Isaac Sim Simulator first."""
 
 import argparse
+import importlib.util
 import sys
+from pathlib import Path
 
 from isaaclab.app import AppLauncher
 
@@ -35,6 +37,31 @@ args_cli, hydra_args = parser.parse_known_args()
 if args_cli.video:
     args_cli.enable_cameras = True
 
+# fail fast if rl_games is missing to avoid launching Isaac Sim
+if importlib.util.find_spec("rl_games") is None:
+    print(
+        "[ERROR] Missing Python package `rl_games`.\n"
+        "Install it in the same Python environment as Isaac Lab, e.g.:\n"
+        "  pip install rl-games\n"
+        "or:\n"
+        "  pip install git+https://github.com/Denys88/rl_games"
+    )
+    raise SystemExit(1)
+
+if importlib.util.find_spec("cat_envs") is None:
+    repo_root = Path(__file__).resolve().parents[2]
+    local_ext = repo_root / "exts" / "cat_envs"
+    if local_ext.exists():
+        sys.path.insert(0, str(local_ext))
+
+if importlib.util.find_spec("cat_envs") is None:
+    print(
+        "[ERROR] Missing local package `cat_envs`.\n"
+        "Either install it or run from the repo with the local path available.\n"
+        "Tried adding: exts/cat_envs"
+    )
+    raise SystemExit(1)
+
 # clear out sys.argv for Hydra
 sys.argv = [sys.argv[0]] + hydra_args
 
@@ -48,7 +75,9 @@ import gymnasium as gym
 import math
 import os
 import random
+import torch
 from datetime import datetime
+from torch import serialization as torch_serialization
 
 from rl_games.common import env_configurations, vecenv
 from rl_games.common.algo_observer import IsaacAlgoObserver
@@ -62,7 +91,26 @@ from isaaclab.envs import (
 )
 from isaaclab.utils.assets import retrieve_file_path
 from isaaclab.utils.dict import print_dict
-from isaaclab.utils.io import dump_pickle, dump_yaml
+try:
+    from isaaclab.utils.io import dump_pickle, dump_yaml
+except ImportError:
+    # IsaacLab removed dump_pickle in newer versions; keep local fallback.
+    from isaaclab.utils.io import dump_yaml
+    import os
+    import pickle
+
+    def dump_pickle(filename: str, data):
+        """Saves data into a pickle file safely.
+
+        Note:
+            The function creates any missing directory along the file's path.
+        """
+        if not filename.endswith("pkl"):
+            filename += ".pkl"
+        if not os.path.exists(os.path.dirname(filename)):
+            os.makedirs(os.path.dirname(filename), exist_ok=True)
+        with open(filename, "wb") as f:
+            pickle.dump(data, f, protocol=pickle.HIGHEST_PROTOCOL)
 
 from isaaclab_rl.rl_games import RlGamesGpuEnv
 from cat_envs.tasks.utils.rl_games.rl_games import RlGamesVecEnvWrapperCaT as RlGamesVecEnvWrapper
@@ -74,10 +122,37 @@ from isaaclab_tasks.utils.hydra import hydra_task_config
 
 # PLACEHOLDER: Extension template (do not remove this comment)
 
+def _patch_rl_games_checkpoint_loading():
+    """Patch rl_games checkpoint loading for PyTorch>=2.6 weights_only default."""
+    try:
+        import numpy as np
+        # Allowlist common numpy globals used in older checkpoints.
+        if hasattr(torch_serialization, "add_safe_globals"):
+            torch_serialization.add_safe_globals([np.core.multiarray.scalar, np.dtype])
+    except Exception:
+        pass
+
+    try:
+        from rl_games.algos_torch import torch_ext
+
+        def _safe_load(filename):
+            def _load(path):
+                try:
+                    return torch.load(path, weights_only=False)
+                except TypeError:
+                    return torch.load(path)
+
+            return torch_ext.safe_filesystem_op(_load, filename)
+
+        torch_ext.safe_load = _safe_load
+    except Exception:
+        pass
+
 
 @hydra_task_config(args_cli.task, "rl_games_cfg_entry_point")
 def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agent_cfg: dict):
     """Train with RL-Games agent."""
+    _patch_rl_games_checkpoint_loading()
     # override configurations with non-hydra CLI arguments
     env_cfg.scene.num_envs = args_cli.num_envs if args_cli.num_envs is not None else env_cfg.scene.num_envs
     env_cfg.sim.device = args_cli.device if args_cli.device is not None else env_cfg.sim.device
